@@ -1,86 +1,95 @@
-# HH Parser — ETL + Telegram‑бот для поиска вакансий HeadHunter (MVP)
+### HH Parser — ETL‑система и Telegram‑бот для анализа вакансий HeadHunter (MVP)
 
-Проект собирает вакансии с HeadHunter, сохраняет "сырые" данные, строит аналитические
-витрины (DuckDB / Postgres) и предоставляет простой Telegram‑бот для поиска и вывода
-статистики (топ‑городов, топ‑навыков, зарплатные агрегаты).
+Проект реализует конвейер сбора данных с HeadHunter, их хранения и аналитики, а также предоставляет Telegram‑бота для поиска вакансий и просмотра статистики.
 
-Файл‑ссылки
+**Возможности**
+- Сбор вакансий с HH: поддержка двух способов авторизации — статический HH_API_TOKEN и OAuth (client credentials).
+- Контроль нагрузки: глобальная семафора для ограничения числа одновременных запросов к API HH (throttling).
+- Хранение сырых данных: сохранение ответов в форматах JSONL и Parquet.
+- Аналитические витрины: построение витрин данных в DuckDB (с возможностью выгрузки в Postgres).
 
-- Основной запуск бота: [main.py](main.py)
-- Telegram handlers: [bot/bot.py](bot/bot.py)
-- HH client: [extract/hh_api.py](extract/hh_api.py)
-- Сохранение сырых данных: [extract/hh_raw.py](extract/hh_raw.py)
-- Трансформации / витрины: [transform/vitrine.py](transform/vitrine.py)
-- DuckDB helper: [load/duckdb_store.py](load/duckdb_store.py)
-- Конфиг: [config.py](config.py)
-- Тесты: [test/test_hh_parser.py](test/test_hh_parser.py)
+**Telegram‑бот:**
+- поиск вакансий по запросам;
+- постраничный вывод результатов;
+- отображение прогресса загрузки данных;
+- статистика: топ городов, топ навыков, зарплатные агрегаты.
 
-Особенности
+**Структура проекта**
+```
+main.py — точка входа, запуск бота.
+bot/bot.py — обработчики команд Telegram‑бота.
+extract/hh_api.py — клиент для работы с API HeadHunter.
+extract/hh_raw.py — логика сохранения сырых данных.
+transform/vitrine.py — трансформации данных и построение витрин.
+load/duckdb_store.py — вспомогательные функции для работы с DuckDB.
+config.py — конфигурация приложения.
+test/test_hh_parser.py — тесты.
+cli.py — интерфейс командной строки для запуска ETL‑задач.
+```
 
-- Поддержка двух способов авторизации HH: статический `HH_API_TOKEN` и OAuth client credentials.
-- Глобальная семафора для защиты от избытка одновременных запросов к HH (throttling).
-- Сохранение сырых ответов (JSONL / Parquet) и построение витрин в DuckDB.
-- Telegram‑бот: поиск, постраничный вывод, прогресс загрузки и статистика (топ‑навыков/городов).
+**Требования**
+- Python версии 3.11 или выше (проект протестирован на 3.11 и 3.13).
+- Зависимости, указанные в файле requirements.txt.
+---
 
-Требования
+**Быстрый старт (локальный запуск)**
 
-- Python 3.11+ (проект тестируется на 3.11 и 3.13)
-- Установленные зависимости: смотрите `requirements.txt`.
-
-Быстрый старт (локально)
-
-1. Склонируйте репозиторий и создайте виртуальное окружение:
-
+Склонируйте репозиторий:
 ```bash
-git clone <repo-url>
+git clone https://github.com/drxr/hh_bot.git
 cd hh_parser
+```
+Создайте и активируйте виртуальное окружение:
+```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Для Windows: .venv\Scripts\activate
+```
+Обновите pip и установите зависимости:
+```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
-
-2. Создайте файл `.env` (можете скопировать `.env.example` если он есть) и заполните
-   минимальные переменные:
-
+Настройте переменные окружения:
+- Создайте файл .env (можно скопировать шаблон .env.example, если он есть).
+- Заполните необходимые переменные:
 ```env
 BOT_TOKEN=your_telegram_bot_token
-HH_API_TOKEN=your_hh_api_token        # или использовать client_id/secret
+HH_API_TOKEN=your_hh_api_token          # Либо используйте OAuth: HH_CLIENT_ID и HH_CLIENT_SECRET
 HH_CLIENT_ID=your_client_id
 HH_CLIENT_SECRET=your_client_secret
 DUCKDB_PATH=./data/hh.duckdb
 RAW_STORAGE_DIR=./data/raw
 ```
-
-3. Запустите бота (polling):
-
+Запустите Telegram‑бота (polling):
 ```bash
-source .venv/bin/activate
 python main.py
 ```
+**Запуск ETL‑процессов (локально)**
 
-Запуск ETL (локально)
+Используйте CLI для запуска этапов извлечения и построения витрин:
 
+Извлечение данных:
 ```bash
 python cli.py extract "data analyst" --area 113 --pages 2 --last 7
+```
+Построение витрин:
+```bash
 python cli.py build_vitrines --use-duckdb
 ```
+**Тестирование**
 
-Тесты
-
+Для запуска тестов активируйте виртуальное окружение и выполните:
 ```bash
-source .venv/bin/activate
 pytest -q
 ```
+**CI / GitHub Actions**
 
-CI / GitHub Actions
-
-В проект был добавлен workflow для GitHub Actions: `.github/workflows/python-ci.yml`.
-Он запускает тесты на push/PR в ветки `main`/`master` и использует matrix для Python 3.11/3.13.
+В проекте настроен workflow (.github/workflows/python-ci.yml), который:
+- автоматически запускает тесты при push и pull request в ветки main/master;
+- использует матрицу версий Python (3.11, 3.13) для проверки совместимости.
 
 Рекомендации по деплою
 
-- Для продакшн‑деплоя Telegram‑бота удобно использовать Docker / systemd или
-  managed host (Heroku, VPS). При деплое учтите хранение секретов (GH Secrets / env).
-- Если планируете длительные фоновые задачи (более 30s) — выносите тяжёлые ETL‑операции
-  в фоновые worker'ы (Celery / RQ / systemd timers).
+Для продакшн‑развёртывания Telegram‑бота удобно использовать Docker, systemd или управляемые хостинги (VPS, облачные платформы).
+Секреты (токены, ключи) храните в безопасном хранилище (GitHub Secrets, переменные окружения сервера).
+Длительные фоновые задачи (ETL‑процессы продолжительностью более 30 секунд) рекомендуется выносить в отдельные воркеры (Celery, RQ) либо запускать через планировщик (systemd timers).
